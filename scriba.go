@@ -7,24 +7,29 @@ import(
 	"os/signal"
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
+	"time"
 )
 
 func main(){
 	log.Printf("first commit")
 
 	done := make(chan bool)
+	monitorStream := make(chan int64)
 
 	setEnvVars()
 	printBanner()
 
 	go listenForSigs(done)
-	go parse()
+
+	go monitor(os.Getenv("NGINX_ACCESS_LOG_PATH"), monitorStream)
 
 	for{
 		select{
 		case <-done:
 			log.Println("Stopping, bye.")
 			return
+		case s := <-monitorStream:
+			fmt.Printf("\n New monitor log size: %d\n", s)
 		}
 	}
 }
@@ -35,7 +40,7 @@ func main(){
  * @return
  */
 func parse(){
-	file := "./dummy.txt"
+	file := os.Getenv("NGINX_ACCESS_LOG_PATH")
 	info, err := os.Stat(file)
 	if err != nil{
 		log.Printf("%s", err)
@@ -47,7 +52,41 @@ func parse(){
 }
 
 /**
- * @brief      { function_description }
+ * @brief      Monitor file function
+ *
+ * @return     
+ */
+func monitor(filename string, monitorStream chan int64){
+	
+	info, err := os.Stat(filename)
+	if err != nil{
+		log.Printf("%s", err)
+	}
+
+	currentSize := info.Size()
+	for{
+
+		time.Sleep(3000 * time.Millisecond)
+		infoTmp, tmpErrror := os.Stat(filename)
+		if tmpErrror != nil{
+			log.Printf("%s", tmpErrror)
+		}
+
+		if infoTmp.Size() > currentSize{
+			monitorStream<-infoTmp.Size()
+			currentSize = infoTmp.Size()
+		}
+		
+	}
+
+	// log.Printf("%s", info.Name())
+	// log.Printf("%d", info.Size())
+	// log.Printf("%s", info.Mode())
+
+}
+
+/**
+ * @brief      Listen for system signals. Kill app wathever comes up :)
  *
  * @param      chan bool the kill channel
  */
