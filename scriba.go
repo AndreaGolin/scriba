@@ -5,12 +5,17 @@ import(
 	"os"
 	"fmt"
 	"os/signal"
+	"github.com/fatih/color"
+	"github.com/joho/godotenv"
 )
 
 func main(){
 	log.Printf("first commit")
 
 	done := make(chan bool)
+
+	setEnvVars()
+	printBanner()
 
 	go listenForSigs(done)
 	go parse()
@@ -58,4 +63,31 @@ func listenForSigs(done chan bool) {
 			return
 		}
 	}
+}
+
+/**
+ * @brief      Set environmental variables
+ *
+ * @return
+ */
+func setEnvVars(){
+
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	
+}
+
+/**
+ * @brief      Print banner or MOTD
+ *
+ * @return     
+ */
+func printBanner(){
+	red := color.New(color.FgRed).SprintFunc()
+	blue := color.New(color.FgBlue).SprintFunc()
+	fmt.Println()
+	fmt.Printf("%s version %s\n\r", red(os.Getenv("PACKAGE_NAME")), blue(os.Getenv("VERSION")))
+	fmt.Println()
 }
