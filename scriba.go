@@ -8,6 +8,7 @@ import(
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
 	"time"
+	"bufio"
 )
 
 func main(){
@@ -21,7 +22,8 @@ func main(){
 
 	go listenForSigs(done)
 
-	go monitor(os.Getenv("NGINX_ACCESS_LOG_PATH"), monitorStream)
+	go listNginxAccess(os.Getenv("NGINX_ACCESS_LOG_PATH"))
+	// go monitor(os.Getenv("NGINX_ACCESS_LOG_PATH"), monitorStream)
 
 	for{
 		select{
@@ -32,6 +34,36 @@ func main(){
 			fmt.Printf("\n New monitor log size: %d\n", s)
 		}
 	}
+}
+
+/**
+ * @brief      Load file and read it line by line
+ *
+ * @param      filename  The filename
+ *
+ */
+func listNginxAccess(filename string){
+
+	file, err := os.Open(filename)
+	if err != nil {
+	    log.Fatal(err)
+	}
+	defer file.Close()
+
+	for {
+		time.Sleep(100* time.Millisecond)
+
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			fmt.Println(scanner.Text())
+		}
+
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintln(os.Stderr, "reading standard input:", err)
+		}
+	}
+	
+
 }
 
 /**
