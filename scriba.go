@@ -7,115 +7,29 @@ import(
 	"os/signal"
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
-	"time"
-	"bufio"
+	scrbngx "scriba/scriba_nginx"
 )
 
 func main(){
-	log.Printf("first commit")
 
 	done := make(chan bool)
-	monitorStream := make(chan int64)
 
 	setEnvVars()
 	printBanner()
 
 	go listenForSigs(done)
 
-	go listNginxAccess(os.Getenv("NGINX_ACCESS_LOG_PATH"))
-	// go monitor(os.Getenv("NGINX_ACCESS_LOG_PATH"), monitorStream)
+	go scrbngx.SnapNginxAccess(os.Getenv("NGINX_ACCESS_LOG_PATH"))
 
 	for{
 		select{
 		case <-done:
 			log.Println("Stopping, bye.")
 			return
-		case s := <-monitorStream:
-			fmt.Printf("\n New monitor log size: %d\n", s)
 		}
 	}
 }
 
-/**
- * @brief      Load file and read it line by line
- *
- * @param      filename  The filename
- *
- */
-func listNginxAccess(filename string){
-
-	file, err := os.Open(filename)
-	if err != nil {
-	    log.Fatal(err)
-	}
-	defer file.Close()
-
-	for {
-		time.Sleep(100* time.Millisecond)
-
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			fmt.Println(scanner.Text())
-		}
-
-		if err := scanner.Err(); err != nil {
-			fmt.Fprintln(os.Stderr, "reading standard input:", err)
-		}
-	}
-	
-
-}
-
-/**
- * @brief      Dummy parse function
- *
- * @return
- */
-func parse(){
-	file := os.Getenv("NGINX_ACCESS_LOG_PATH")
-	info, err := os.Stat(file)
-	if err != nil{
-		log.Printf("%s", err)
-	}
-
-	log.Printf("%s", info.Name())
-	log.Printf("%d", info.Size())
-	log.Printf("%s", info.Mode())
-}
-
-/**
- * @brief      Monitor file function
- *
- * @return     
- */
-func monitor(filename string, monitorStream chan int64){
-	
-	info, err := os.Stat(filename)
-	if err != nil{
-		log.Printf("%s", err)
-	}
-
-	currentSize := info.Size()
-	for{
-
-		time.Sleep(3000 * time.Millisecond)
-		infoTmp, tmpErrror := os.Stat(filename)
-		if tmpErrror != nil{
-			log.Printf("%s", tmpErrror)
-		}
-
-		if infoTmp.Size() > currentSize{
-			monitorStream<-infoTmp.Size()
-			currentSize = infoTmp.Size()
-		}
-		
-	}
-
-	// log.Printf("%s", info.Name())
-	// log.Printf("%d", info.Size())
-	// log.Printf("%s", info.Mode())
-
-}
 
 /**
  * @brief      Listen for system signals. Kill app wathever comes up :)
